@@ -13,7 +13,7 @@ angular.module('ui.bootstrap.position', [])
  * relation to other, existing elements (this is the case for tooltips, popovers,
  * typeahead suggestions etc.).
  */
-  .factory('$position', ['$document', '$window', function ($document, $window) {
+  .factory('$position', ['$document', '$window', '$rootScope', '$timeout', function ($document, $window, $rootScope, $timeout) {
 
     function getStyle(el, cssprop) {
       if (el.currentStyle) { //IE
@@ -102,27 +102,67 @@ angular.module('ui.bootstrap.position', [])
         targetElWidth = targetEl.prop('offsetWidth');
         targetElHeight = targetEl.prop('offsetHeight');
 
+        var window_width = $window.innerWidth;
+        var window_height = $window.innerHeight;
+
+        var xs_window_width = 414;  //iphone6+ = 414, iphone6=375, iphone5=320
+        var xs_window_height = 568; //iphone6+=736, iphone6=667, iphone5=568
+
+        var xs_position_left = 15;
+        var xs_position_top = 15;
+
+        if(!!$rootScope.bootstrapConfirmWidthXS){
+          xs_window_width = $rootScope.bootstrapConfirmWidthXS; //setting can be overriden at $rootscrop
+        }
+        if(!!$rootScope.bootstrapConfirmHeightXS){
+          xs_window_height = $rootScope.bootstrapConfirmHeightXS;
+        }
+
         var shiftWidth = {
           center: function () {
-            return hostElPos.left + hostElPos.width / 2 - targetElWidth / 2;
+            if(window_width > xs_window_width)
+              return hostElPos.left + hostElPos.width / 2 - targetElWidth / 2;
+            else{
+              return xs_position_left;
+            }
           },
           left: function () {
-            return hostElPos.left;
+            if(window_width > xs_window_width)
+              return hostElPos.left;
+            else{
+              return xs_position_left;
+            }
           },
           right: function () {
-            return hostElPos.left + hostElPos.width;
+            if(window_width > xs_window_width)
+              return hostElPos.left + hostElPos.width;
+            else{
+              return xs_position_left;
+            }
           }
         };
 
         var shiftHeight = {
           center: function () {
-            return hostElPos.top + hostElPos.height / 2 - targetElHeight / 2;
+            if(window_height > xs_window_height)
+              return hostElPos.top + hostElPos.height / 2 - targetElHeight / 2;
+            else{
+              return xs_position_top;
+            }
           },
           top: function () {
-            return hostElPos.top;
+            if(window_height > xs_window_height)
+              return hostElPos.top;
+            else{
+              return xs_position_top;
+            }
           },
           bottom: function () {
-            return hostElPos.top + hostElPos.height;
+            if(window_height > xs_window_height)
+              return hostElPos.top + hostElPos.height;
+            else{
+              return xs_position_top;
+            }
           }
         };
 
@@ -136,7 +176,7 @@ angular.module('ui.bootstrap.position', [])
           case 'left':
             targetElPos = {
               top: shiftHeight[pos1](),
-              left: hostElPos.left - targetElWidth
+              left: window_width > xs_window_width? hostElPos.left - targetElWidth : shiftWidth[pos0]()
             };
             break;
           case 'bottom':
@@ -147,12 +187,11 @@ angular.module('ui.bootstrap.position', [])
             break;
           default:
             targetElPos = {
-              top: hostElPos.top - targetElHeight,
+              top: window_height > xs_window_height? hostElPos.top - targetElHeight : shiftHeight[pos1](),
               left: shiftWidth[pos1]()
             };
             break;
         }
-
         return targetElPos;
       }
     };
