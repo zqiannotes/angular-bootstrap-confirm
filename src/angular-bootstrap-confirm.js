@@ -22,7 +22,10 @@ module.exports = angular
     var vm = this;
     vm.defaults = confirmationPopoverDefaults;
     vm.$attrs = $attrs;
-    var positionServiceName = $injector.has('$uibPosition') ? '$uibPosition' : '$position';
+    //var positionServiceName = $injector.has('$uibPosition') ? '$uibPosition' : '$position';
+    var positionServiceName = $injector.has('$position') ? '$position' : '$uibPosition';
+    //default to use our own $position as $uibPosition not handling small screen
+
     var positionService = $injector.get(positionServiceName);
     var templateUrl = $attrs.templateUrl || confirmationPopoverDefaults.templateUrl;
     var popoverScope = $rootScope.$new(true);

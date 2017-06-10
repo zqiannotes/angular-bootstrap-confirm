@@ -15,6 +15,89 @@ angular.module('ui.bootstrap.position', [])
  */
   .factory('$position', ['$document', '$window', '$rootScope', '$timeout', function ($document, $window, $rootScope, $timeout) {
 
+  //https://stackoverflow.com/questions/1567327/using-jquery-to-get-elements-position-relative-to-viewport?rq=1
+    function getViewportOffset($e) {
+        // var scrollLeft = $window.scrollLeft();
+        // var scrollTop = $window.scrollTop();
+        // var offset = $e.offset()
+
+        var scrollLeft = $window.pageXOffset;
+        var scrollTop = $window.pageYOffset;
+        var offset = $e[0].getBoundingClientRect();
+
+        //the rect for viewport
+        var rect_viewport = {
+            x1: scrollLeft,
+            y1: scrollTop,
+            x2: scrollLeft + $window.innerWidth,
+            y2: scrollTop + $window.innerHeight
+        };
+
+        //the rect for viewport - top half
+        var rect_viewport_tophalf = {
+            x1: scrollLeft,
+            y1: scrollTop,
+            x2: scrollLeft + $window.innerWidth,
+            y2: scrollTop + $window.innerHeight / 2
+        };
+
+        //the rect for viewport - low half
+        var rect_viewport_lowhalf = {
+            x1: scrollLeft,
+            y1: scrollTop + $window.innerHeight / 2 + 1,
+            x2: scrollLeft + $window.innerWidth,
+            y2: scrollTop + $window.innerHeight
+        };
+
+        //the rect for viewport - left half
+        var rect_viewport_lefthalf = {
+            x1: scrollLeft,
+            y1: scrollTop,
+            x2: scrollLeft + $window.innerWidth / 2,
+            y2: scrollTop + $window.innerHeight
+        };
+
+        //the rect for viewport - right half
+        var rect_viewport_righthalf = {
+            x1: scrollLeft + $window.innerWidth / 2 + 1,
+            y1: scrollTop,
+            x2: scrollLeft + $window.innerWidth,
+            y2: scrollTop + $window.innerHeight
+        };
+
+
+        //the rect for element
+        var rect_element = {
+            x1: offset.left,
+            y1: offset.top,
+            x2: offset.left + $e[0].clientWidth,
+            y2: offset.top + $e[0].clientHeight
+        };
+
+        return {
+            left: offset.left - scrollLeft,     //relative to viewport
+            top: offset.top - scrollTop,        //relative to viewport
+            insideViewport:
+                rect_viewport.x1 < rect_element.x2 &&
+                rect_viewport.x2 > rect_element.x1 &&
+                rect_viewport.y1 < rect_element.y2 &&
+                rect_viewport.y2 > rect_element.y1,
+
+            insideViewportTopHalf:
+                rect_viewport_lowhalf.y1 > rect_element.y2,
+
+            insideViewportLowHalf:
+                rect_viewport_tophalf.y2 < rect_element.y1,
+
+            insideViewportLeftHalf:
+                rect_viewport_righthalf.x1 > rect_element.x2,
+
+            insideViewportRightHalf:
+                rect_viewport_lefthalf.x2 < rect_element.x1
+,
+        };
+    }
+
     function getStyle(el, cssprop) {
       if (el.currentStyle) { //IE
         return el.currentStyle[cssprop];
@@ -90,7 +173,8 @@ angular.module('ui.bootstrap.position', [])
       positionElements: function (hostEl, targetEl, positionStr, appendToBody) {
 
         var positionStrParts = positionStr.split('-');
-        var pos0 = positionStrParts[0], pos1 = positionStrParts[1] || 'center';
+        var pos0 = positionStrParts[0];
+        var pos1 = positionStrParts[1] || 'center';
 
         var hostElPos,
           targetElWidth,
@@ -105,11 +189,14 @@ angular.module('ui.bootstrap.position', [])
         var window_width = $window.innerWidth;
         var window_height = $window.innerHeight;
 
+        var scrollLeft = $window.pageXOffset;
+        var scrollTop = $window.pageYOffset;
+
         var xs_window_width = 414;  //iphone6+ = 414, iphone6=375, iphone5=320
         var xs_window_height = 568; //iphone6+=736, iphone6=667, iphone5=568
 
         var xs_position_left = 15;
-        var xs_position_top = 15;
+        var xs_position_top = 30;   //avoid top banner height
 
         if(!!$rootScope.bootstrapConfirmWidthXS){
           xs_window_width = $rootScope.bootstrapConfirmWidthXS; //setting can be overriden at $rootscrop
@@ -120,11 +207,11 @@ angular.module('ui.bootstrap.position', [])
 
         var shiftWidth = {
           center: function () {
-            if(window_width > xs_window_width)
-              return hostElPos.left + hostElPos.width / 2 - targetElWidth / 2;
-            else{
-              return xs_position_left;
-            }
+              var x= hostElPos.left + hostElPos.width / 2 - targetElWidth / 2;
+              if (x <= 0){
+                x = xs_position_left;
+              }
+              return x;
           },
           left: function () {
             if(window_width > xs_window_width)
@@ -137,32 +224,51 @@ angular.module('ui.bootstrap.position', [])
             if(window_width > xs_window_width)
               return hostElPos.left + hostElPos.width;
             else{
-              return xs_position_left;
+             return xs_position_left;
             }
           }
         };
 
         var shiftHeight = {
           center: function () {
-            if(window_height > xs_window_height)
-              return hostElPos.top + hostElPos.height / 2 - targetElHeight / 2;
-            else{
-              return xs_position_top;
-            }
+              var pos = hostElPos.top + hostElPos.height / 2 - targetElHeight / 2;  //default center position
+              var viewportOffset = getViewportOffset(hostEl);
+
+//adjust a little bit
+              if(viewportOffset.insideViewportTopHalf){
+                pos = pos + 100;
+              }
+
+//adjust a little bit
+              if(viewportOffset.insideViewportLowHalf){
+                pos = pos - 100;
+              }
+
+
+              return pos;
           },
           top: function () {
             if(window_height > xs_window_height)
               return hostElPos.top;
             else{
-              return xs_position_top;
+               return xs_position_top;
             }
           },
           bottom: function () {
-            if(window_height > xs_window_height)
-              return hostElPos.top + hostElPos.height;
-            else{
-              return xs_position_top;
+            var top;
+            var delta;
+            if(window_height > xs_window_height){
+                top = hostElPos.top + hostElPos.height;
+                delta = top + targetElHeight - scrollTop - window_height;
+                if(delta > 0){
+                  top = top - delta - 10; // top - delta - 10 px more
+                }
             }
+
+            else{
+                top = xs_position_top;
+            }
+            return top;
           }
         };
 
@@ -170,19 +276,20 @@ angular.module('ui.bootstrap.position', [])
           case 'right':
             targetElPos = {
               top: shiftHeight[pos1](),
-              left: shiftWidth[pos0]()
+              left: window_width > xs_window_width? shiftWidth[pos0](): shiftWidth['left']()
             };
+
             break;
           case 'left':
             targetElPos = {
               top: shiftHeight[pos1](),
-              left: window_width > xs_window_width? hostElPos.left - targetElWidth : shiftWidth[pos0]()
+              left: window_width > xs_window_width? hostElPos.left - targetElWidth : shiftWidth['left']()
             };
             break;
           case 'bottom':
             targetElPos = {
               top: shiftHeight[pos0](),
-              left: shiftWidth[pos1]()
+              left: window_width > xs_window_width? hostElPos.left - targetElWidth : shiftWidth['left']()
             };
             break;
           default:
