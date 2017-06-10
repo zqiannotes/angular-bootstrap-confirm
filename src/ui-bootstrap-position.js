@@ -232,16 +232,19 @@ angular.module('ui.bootstrap.position', [])
         var shiftHeight = {
           center: function () {
               var pos = hostElPos.top + hostElPos.height / 2 - targetElHeight / 2;  //default center position
-              var viewportOffset = getViewportOffset(hostEl);
 
-//adjust a little bit
-              if(viewportOffset.insideViewportTopHalf){
-                pos = pos + 100;
-              }
+              if(window_height <= xs_window_height) {
+                var viewportOffset = getViewportOffset(hostEl);
 
-//adjust a little bit
-              if(viewportOffset.insideViewportLowHalf){
-                pos = pos - 100;
+                //adjust a little bit when xs
+                if(viewportOffset.insideViewportTopHalf){
+                  pos = pos + 100;
+                }
+
+                //adjust a little bit when xs
+                if(viewportOffset.insideViewportLowHalf){
+                  pos = pos - 100;
+                }
               }
 
 
